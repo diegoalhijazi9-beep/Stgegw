@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Geometry Dash Mini</title>
+<style>
+body {
+  margin: 0;
+  background: black;
+  color: white;
+  font-family: Arial;
+  text-align: center;
+}
+canvas {
+  display: none;
+  background: #111;
+  border: 3px solid cyan;
+}
+.menu {
+  margin-top: 80px;
+}
+button {
+  padding: 10px 20px;
+  margin: 8px;
+  font-size: 16px;
+}
+</style>
+</head>
+<body>
+
+<div class="menu" id="menu">
+  <h1>GEOMETRY DASH MINI</h1>
+  <button onclick="startLevel(0)">Level 1</button>
+  <button onclick="startLevel(1)">Level 2</button>
+  <button onclick="startLevel(2)">Level 3</button>
+</div>
+
+<canvas id="game" width="800" height="300"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const SPEED = 6;
+
+let player, cameraX, gameOver, levelComplete, currentLevel;
+
+// 🧱 REAL LEVEL DATA (WORLD POSITIONS)
+const levels = [
+  {
+    length: 3000,
+    spikes: [600, 900, 1200, 1500, 1800, 2100, 2500]
+  },
+  {
+    length: 3500,
+    spikes: [500, 700, 850, 1100, 1350, 1600, 1900, 2300, 2700, 3100]
+  },
+  {
+    length: 4200,
+    spikes: [450, 650, 820, 1000, 1180, 1400, 1650, 1900, 2150, 2450, 2800, 3200, 3600]
+  }
+];
+
+function startLevel(index) {
+  currentLevel = index;
+  document.getElementById("menu").style.display = "none";
+  canvas.style.display = "block";
+
+  player = {
+    x: 120,
+    y: 230,
+    size: 30,
+    velY: 0,
+    gravity: 1.2,
+    jump: -18,
+    grounded: true
+  };
+
+  cameraX = 0;
+  gameOver = false;
+  levelComplete = false;
+}
+
+// ⚡ INSTANT INPUT
+function jump() {
+  if (player.grounded && !gameOver && !levelComplete) {
+    player.velY = player.jump;
+    player.grounded = false;
+  }
+}
+document.addEventListener("pointerdown", jump);
+document.addEventListener("keydown", e => {
+  if (e.code === "Space") jump();
+});
+
+function update() {
+  if (gameOver || levelComplete) return;
+
+  cameraX += SPEED;
+
+  // END OF LEVEL
+  if (cameraX >= levels[currentLevel].length) {
+    levelComplete = true;
+    return;
+  }
+
+  // Physics
+  player.velY += player.gravity;
+  player.y += player.velY;
+
+  if (player.y >= 230) {
+    player.y = 230;
+    player.velY = 0;
+    player.grounded = true;
+  }
+
+  // Collision (world → screen conversion)
+  levels[currentLevel].spikes.forEach(x => {
+    const screenX = x - cameraX;
+
+    if (
+      screenX < player.x + player.size &&
+      screenX + 30 > player.x &&
+      player.y + player.size > 240
+    ) {
+      gameOver = true;
+    }
+  });
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Ground
+  ctx.fillStyle = "cyan";
+  ctx.fillRect(0, 270, canvas.width, 5);
+
+  // Player
+  ctx.fillStyle = "#ff00ff";
+  ctx.fillRect(player.x, player.y, player.size, player.size);
+
+  // Spikes (ONLY DRAW WHEN ON SCREEN)
+  ctx.fillStyle = "red";
+  levels[currentLevel].spikes.forEach(x => {
+    const screenX = x - cameraX;
+    if (screenX > -30 && screenX < canvas.width) {
+      ctx.fillRect(screenX, 240, 30, 40);
+    }
+  });
+
+  // Progress
+  ctx.fillStyle = "white";
+  ctx.fillText(
+    "Progress: " + Math.floor((cameraX / levels[currentLevel].length) * 100) + "%",
+    20, 30
+  );
+
+  if (gameOver) {
+    ctx.font = "30px Arial";
+    ctx.fillText("GAME OVER", 300, 140);
+    ctx.font = "18px Arial";
+    ctx.fillText("Click to retry", 330, 180);
+  }
+
+  if (levelComplete) {
+    ctx.font = "30px Arial";
+    ctx.fillText("LEVEL COMPLETE!", 240, 140);
+    ctx.font = "18px Arial";
+    ctx.fillText("Click for next level", 280, 180);
+  }
+}
+
+canvas.addEventListener("click", () => {
+  if (gameOver) startLevel(currentLevel);
+  if (levelComplete) {
+    if (currentLevel + 1 < levels.length) {
+      startLevel(currentLevel + 1);
+    } else {
+      canvas.style.display = "none";
+      document.getElementById("menu").style.display = "block";
+    }
+  }
+});
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+
+</body>
+</html>
